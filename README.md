@@ -30,67 +30,64 @@ If you want to nuke and rebuild local data: delete `./.pglite/` and reload.
 
 ## Deploying to Vercel (via GitHub Actions)
 
-Pushes to `main` trigger `.github/workflows/deploy.yml`, which syncs the
-GitHub repo secrets into the Vercel project's production env, then deploys.
+Pushes to `main` trigger `.github/workflows/deploy.yml`. The workflow only
+runs `vercel pull` → `vercel build` → `vercel deploy --prebuilt --prod`.
+**Vercel is the single source of truth for all runtime environment variables.**
 
 ### One-time setup
 
-1. **Create a Neon-backed Postgres** in Vercel (Project → Storage → Create
-   Database → Neon) or directly on neon.tech. Copy the pooled connection
-   string — that's your `DATABASE_URL`.
-2. **Push the schema to Neon** (one-time):
+1. **Create the Vercel project + Neon DB**, easiest path:
    ```bash
-   DATABASE_URL='postgresql://…neon.tech/…?sslmode=require' bun run db:push
+   vercel link --yes --scope <your-team-slug> --project pettycash
+   vercel integration add neon --scope <your-team-slug>
    ```
-3. **Create a Vercel project** (any way — `vercel link`, dashboard import,
-   or just `vercel deploy` once locally). Note the project + org IDs from
-   `.vercel/project.json`.
-4. **Generate a Vercel access token** at
-   <https://vercel.com/account/tokens>.
-5. **Set GitHub repo secrets** (Settings → Secrets and variables → Actions):
+   Neon auto-injects `DATABASE_URL` + ~18 related Postgres env vars into
+   all three Vercel envs (Production, Preview, Development).
 
-   | Secret                  | Purpose                                                       |
-   | ----------------------- | ------------------------------------------------------------- |
-   | `VERCEL_TOKEN`          | Personal access token from Vercel                             |
-   | `VERCEL_ORG_ID`         | From `.vercel/project.json` after running `vercel link`       |
-   | `VERCEL_PROJECT_ID`     | From `.vercel/project.json` after running `vercel link`       |
-   | `SESSION_SECRET`        | `openssl rand -hex 32` — used to HMAC-sign session cookies    |
-   | `SUPER_ADMIN_EMAIL`     | Login email for the seeded super admin                        |
-   | `SUPER_ADMIN_NAME`      | Display name for the seeded super admin                       |
-   | `SUPER_ADMIN_PASSWORD`  | Login password for the seeded super admin                     |
-   | `SUPER_ADMIN_DIVISI`    | Optional. Defaults to "Operations".                           |
-   | `DATABASE_URL`          | Postgres URL (Neon / Vercel Postgres)                         |
-
-   You can set them all in one shot with the GitHub CLI:
+2. **Set the app's auth env vars on Vercel** (one-time, never in this repo):
    ```bash
-   gh secret set VERCEL_TOKEN          -b"$VERCEL_TOKEN"
-   gh secret set VERCEL_ORG_ID         -b"$VERCEL_ORG_ID"
-   gh secret set VERCEL_PROJECT_ID     -b"$VERCEL_PROJECT_ID"
-   gh secret set SESSION_SECRET        -b"$(openssl rand -hex 32)"
-   gh secret set SUPER_ADMIN_EMAIL     -b"admin@rantai.dev"
-   gh secret set SUPER_ADMIN_NAME      -b"Super Admin"
-   gh secret set SUPER_ADMIN_PASSWORD  -b"$(read -s pw; echo $pw)"
-   gh secret set DATABASE_URL          -b"$DATABASE_URL"
+   node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))" \
+     | vercel env add SESSION_SECRET production
+   printf 'admin@rantai.dev' | vercel env add SUPER_ADMIN_EMAIL    production
+   printf 'Super Admin'      | vercel env add SUPER_ADMIN_NAME     production
+   printf 'Operations'       | vercel env add SUPER_ADMIN_DIVISI   production
+   printf 'YOUR-PASSWORD'    | vercel env add SUPER_ADMIN_PASSWORD production
+   # Repeat for `preview` and `development` if you want preview deploys to work.
+   ```
+
+3. **Push the Drizzle schema to Neon**:
+   ```bash
+   vercel env pull .env.local --yes --environment=production
+   DATABASE_URL_UNPOOLED=$(grep '^DATABASE_URL_UNPOOLED=' .env.local | cut -d'=' -f2- | tr -d '"')
+   psql "$DATABASE_URL_UNPOOLED" -f drizzle/0000_*.sql
+   ```
+
+4. **Generate a Vercel personal access token** at
+   <https://vercel.com/account/tokens>. Then set just three GitHub secrets:
+   ```bash
+   gh secret set VERCEL_TOKEN      -b"vercel_xxx..."           # from step 4
+   gh secret set VERCEL_ORG_ID     -b"$(jq -r .orgId .vercel/project.json)"
+   gh secret set VERCEL_PROJECT_ID -b"$(jq -r .projectId .vercel/project.json)"
    ```
 
 ### Every push to `main`
 
-The workflow:
+1. Preflight checks `VERCEL_TOKEN`/`ORG_ID`/`PROJECT_ID` exist.
+2. `vercel pull` fetches the latest production env from Vercel.
+3. `vercel build --prod` builds with those env vars.
+4. `vercel deploy --prebuilt --prod` uploads the prebuilt artifacts.
 
-1. Removes + re-adds each secret on Vercel's *production* env (this lets you
-   rotate values in GitHub Actions secrets — they propagate on the next push).
-2. Pulls the Vercel env and builds with `vercel build --prod`.
-3. Deploys the prebuilt artifacts with `vercel deploy --prebuilt --prod`.
+The first request to a freshly-seeded DB calls `ensureSeeded()` which
+inserts the super admin from env vars + a default fund + default
+categories. **No demo users, transactions or top-up cycles are seeded.**
 
-The first request to the deployed app calls `ensureSeeded()` which inserts
-the super admin from env vars + a default fund + default categories. No
-demo users, transactions or top-up cycles are created — that's all real
-data once the super admin starts inviting users.
+### Rotating secrets
 
-To rotate the super-admin password later: change `SUPER_ADMIN_PASSWORD` in
-GitHub → push to main → after the deploy, hit **Reset Demo Data** in the
-user menu (calls `POST /api/demo-reset`) to re-run the seed with the new
-password.
+Change the value on Vercel (`vercel env add NAME production --force` or via
+the dashboard), then either push a commit to `main` or hit *Reset Demo
+Data* in the super admin's user menu (calls `POST /api/demo-reset`) to
+re-seed with the new password. Existing sessions are invalidated when
+`SESSION_SECRET` rotates because their HMAC stops verifying.
 
 ## Scripts
 
