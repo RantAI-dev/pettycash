@@ -49,7 +49,9 @@ interface Actions {
   addNote: (txId: string, note: string) => Promise<void>;
   markNotifRead: (id: string) => Promise<void>;
   markAllNotifsRead: () => Promise<void>;
-  inviteUser: (data: { name: string; email: string; role: UserRole; divisi: string }) => Promise<void>;
+  inviteUser: (data: { name: string; email: string; role: UserRole; divisi: string; password?: string }) => Promise<{ id: string; canLogin: boolean }>;
+  changeMyPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  resetUserPassword: (userId: string, newPassword: string) => Promise<void>;
   updateUser: (id: string, patch: Partial<User>) => Promise<void>;
   updateFund: (patch: Partial<AppState["fund"]>) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
@@ -175,8 +177,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       inviteUser: async (data) => {
-        await api("/api/users", { method: "POST", body: JSON.stringify(data) });
+        const res = await api<{ id: string; canLogin: boolean }>("/api/users", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
         await refresh();
+        return res;
+      },
+      changeMyPassword: async (currentPassword, newPassword) => {
+        await api("/api/me/password", {
+          method: "PATCH",
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+      },
+      resetUserPassword: async (userId, newPassword) => {
+        await api(`/api/users/${userId}/password`, {
+          method: "PATCH",
+          body: JSON.stringify({ newPassword }),
+        });
       },
       updateUser: async (id, patch) => {
         await api(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });

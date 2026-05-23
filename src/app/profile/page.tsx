@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { sel, useStore } from "@/store/store";
-import { Avatar, Badge, Card, Switch } from "@/components/ui/primitives";
+import { Avatar, Badge, Button, Card, Field, Input, Switch } from "@/components/ui/primitives";
+import { useToast } from "@/components/ui/toast";
 import { EVENT_COLOR, EVENT_TEMPLATES, fmtDateTime, fmtIDR, fmtRelTime } from "@/lib/format";
 
 export default function ProfilePage() {
@@ -39,6 +41,8 @@ export default function ProfilePage() {
               </div>
             </div>
           </Card>
+
+          <ChangePasswordCard />
 
           <Card header="Preferensi Notifikasi">
             <div className="col" style={{ gap: 12 }}>
@@ -129,5 +133,95 @@ export default function ProfilePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function ChangePasswordCard() {
+  const { actions } = useStore();
+  const toast = useToast();
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!currentPw || !newPw) {
+      toast.error("Password lama dan baru wajib diisi");
+      return;
+    }
+    if (newPw.length < 6) {
+      toast.error("Password baru minimal 6 karakter");
+      return;
+    }
+    if (newPw === currentPw) {
+      toast.error("Password baru harus berbeda dari yang lama");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error("Konfirmasi password tidak cocok");
+      return;
+    }
+    setBusy(true);
+    try {
+      await actions.changeMyPassword(currentPw, newPw);
+      toast.success("Password berhasil diubah", "Gunakan password baru saat login berikutnya.");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err) {
+      toast.error("Gagal ubah password", err instanceof Error ? err.message.replace(/^\d+\s+\w+:\s*/, "") : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card header="Ubah Password">
+      <Field label="Password Lama">
+        <div style={{ position: "relative" }}>
+          <Input
+            value={currentPw}
+            onChange={setCurrentPw}
+            type={showPw ? "text" : "password"}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            style={{ paddingRight: 38 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            className="icon-btn"
+            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 30, height: 30 }}
+            aria-label={showPw ? "Sembunyikan password" : "Tampilkan password"}
+          >
+            {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        </div>
+      </Field>
+      <Field label="Password Baru" help="Minimal 6 karakter.">
+        <Input
+          value={newPw}
+          onChange={setNewPw}
+          type={showPw ? "text" : "password"}
+          placeholder="••••••••"
+          autoComplete="new-password"
+        />
+      </Field>
+      <Field label="Konfirmasi Password Baru">
+        <Input
+          value={confirmPw}
+          onChange={setConfirmPw}
+          type={showPw ? "text" : "password"}
+          placeholder="••••••••"
+          autoComplete="new-password"
+        />
+      </Field>
+      <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
+        <Button variant="primary" icon={busy ? Loader2 : KeyRound} onClick={submit} disabled={busy}>
+          {busy ? "Memproses…" : "Ubah Password"}
+        </Button>
+      </div>
+    </Card>
   );
 }
