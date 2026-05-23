@@ -20,16 +20,19 @@ export default function AdminFundPage() {
   const toast = useToast();
   const [draft, setDraft] = useState(state.fund);
   const [draftCats, setDraftCats] = useState(state.categories);
+  const [draftProjects, setDraftProjects] = useState(state.projects);
   const [draftNotifs, setDraftNotifs] = useState(state.notifSettings);
   const [newCat, setNewCat] = useState("");
+  const [newProject, setNewProject] = useState("");
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setDraft(state.fund);
     setDraftCats(state.categories);
+    setDraftProjects(state.projects);
     setDraftNotifs(state.notifSettings);
     setDirty(false);
-  }, [state.fund, state.categories, state.notifSettings]);
+  }, [state.fund, state.categories, state.projects, state.notifSettings]);
 
   const markDirty = () => setDirty(true);
 
@@ -41,15 +44,17 @@ export default function AdminFundPage() {
     );
   }
 
-  const save = () => {
-    actions.updateFund(draft);
-    const toAdd = draftCats.filter((c) => !state.categories.includes(c));
-    const toRemove = state.categories.filter((c) => !draftCats.includes(c));
-    toAdd.forEach(actions.addCategory);
-    toRemove.forEach(actions.removeCategory);
-    actions.setNotifSettings(draftNotifs);
-    toast.success("Pengaturan disimpan", "Perubahan berlaku sekarang");
-    setDirty(false);
+  const save = async () => {
+    try {
+      await actions.updateFund(draft);
+      await actions.setCategories(draftCats);
+      await actions.setProjects(draftProjects);
+      await actions.setNotifSettings(draftNotifs);
+      toast.success("Pengaturan disimpan", "Perubahan berlaku sekarang");
+      setDirty(false);
+    } catch (err) {
+      toast.error("Gagal menyimpan", err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
@@ -159,6 +164,86 @@ export default function AdminFundPage() {
                   if (newCat.trim() && !draftCats.includes(newCat.trim())) {
                     setDraftCats([...draftCats, newCat.trim()]);
                     setNewCat("");
+                    markDirty();
+                  }
+                }}
+              >
+                Tambah
+              </Button>
+            </div>
+          </Card>
+
+          <Card
+            header="Proyek / Klien"
+            headerActions={
+              <span className="mono dim" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                {draftProjects.length} proyek
+              </span>
+            }
+          >
+            <p
+              className="mono dim"
+              style={{
+                fontSize: 11,
+                lineHeight: 1.6,
+                marginBottom: 12,
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              Daftar ini muncul sebagai dropdown saat user membuat laporan pengeluaran. Tambahkan
+              klien / proyek internal, dan biarkan <code>(Tanpa Proyek)</code> sebagai fallback
+              untuk transaksi yang tidak terikat ke proyek tertentu.
+            </p>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+              {draftProjects.length === 0 && (
+                <span className="mono dim" style={{ fontSize: 11 }}>
+                  Belum ada proyek. Tambahkan minimal satu (mis. <code>(Tanpa Proyek)</code>).
+                </span>
+              )}
+              {draftProjects.map((p) => (
+                <span
+                  key={p}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5px 10px",
+                    borderRadius: 99,
+                    background: "rgba(94, 182, 250, 0.08)",
+                    border: "1px solid rgba(94, 182, 250, 0.24)",
+                    fontSize: 12,
+                    color: "#cfe6fc",
+                  }}
+                >
+                  {p}
+                  <button
+                    onClick={() => {
+                      setDraftProjects(draftProjects.filter((x) => x !== p));
+                      markDirty();
+                    }}
+                    aria-label="Hapus proyek"
+                    style={{ display: "inline-flex" }}
+                  >
+                    <X size={11} style={{ color: "var(--muted-foreground)" }} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <Input
+                value={newProject}
+                onChange={setNewProject}
+                placeholder="Tambah proyek baru… mis. Klien Kominfo"
+              />
+              <Button
+                variant="outline"
+                icon={Plus}
+                onClick={() => {
+                  const v = newProject.trim();
+                  if (v && !draftProjects.includes(v)) {
+                    setDraftProjects([...draftProjects, v]);
+                    setNewProject("");
                     markDirty();
                   }
                 }}

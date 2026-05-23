@@ -57,6 +57,11 @@ interface Actions {
   addCategory: (name: string) => Promise<void>;
   removeCategory: (name: string) => Promise<void>;
   renameCategory: (oldName: string, newName: string) => Promise<void>;
+  setCategories: (list: string[]) => Promise<void>;
+  addProject: (name: string) => Promise<void>;
+  removeProject: (name: string) => Promise<void>;
+  renameProject: (oldName: string, newName: string) => Promise<void>;
+  setProjects: (list: string[]) => Promise<void>;
   submitTopUp: (
     data: Omit<TopUpCycle, "id" | "approvedAmount" | "status" | "approvedBy" | "requestedAt" | "approvedAt" | "requestedBy" | "fundId">,
   ) => Promise<void>;
@@ -218,6 +223,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       renameCategory: async (oldName, newName) => {
         const next = stateRef.current.categories.map((c) => (c === oldName ? newName : c));
         await api("/api/categories", { method: "PUT", body: JSON.stringify({ categories: next }) });
+        await refresh();
+      },
+      setCategories: async (list) => {
+        await api("/api/categories", { method: "PUT", body: JSON.stringify({ categories: list }) });
+        await refresh();
+      },
+
+      addProject: async (name) => {
+        const next = Array.from(new Set([...stateRef.current.projects, name.trim()].filter(Boolean)));
+        await api("/api/projects", { method: "PUT", body: JSON.stringify({ projects: next }) });
+        await refresh();
+      },
+      removeProject: async (name) => {
+        const next = stateRef.current.projects.filter((p) => p !== name);
+        await api("/api/projects", { method: "PUT", body: JSON.stringify({ projects: next }) });
+        await refresh();
+      },
+      renameProject: async (oldName, newName) => {
+        const next = stateRef.current.projects.map((p) => (p === oldName ? newName : p));
+        await api("/api/projects", { method: "PUT", body: JSON.stringify({ projects: next }) });
+        await refresh();
+      },
+      setProjects: async (list) => {
+        await api("/api/projects", { method: "PUT", body: JSON.stringify({ projects: list }) });
         await refresh();
       },
 
