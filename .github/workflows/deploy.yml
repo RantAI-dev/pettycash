@@ -19,6 +19,26 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
+      - name: Preflight — check required secrets
+        run: |
+          missing=()
+          [ -z "${VERCEL_TOKEN}" ]            && missing+=("VERCEL_TOKEN")
+          [ -z "${VERCEL_ORG_ID}" ]           && missing+=("VERCEL_ORG_ID")
+          [ -z "${VERCEL_PROJECT_ID}" ]       && missing+=("VERCEL_PROJECT_ID")
+          [ -z "${SESSION_SECRET}" ]          && missing+=("SESSION_SECRET")
+          [ -z "${SUPER_ADMIN_PASSWORD}" ]    && missing+=("SUPER_ADMIN_PASSWORD")
+          [ -z "${DATABASE_URL}" ]            && missing+=("DATABASE_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub repo secrets: ${missing[*]}"
+            echo "See README.md → 'Deploying to Vercel (via GitHub Actions)' for setup."
+            exit 1
+          fi
+          echo "All required secrets present."
+        env:
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
