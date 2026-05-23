@@ -1,0 +1,71 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Don't let two deploys race for the same env; cancel-in-progress=false so a
+# queued deploy will run after the in-flight one completes.
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # ----------------------------------------------------------------------
+      # Push every app-level secret from this repo into the Vercel project's
+      # production env. Run on every deploy so rotating a value in GitHub →
+      # rotates it on Vercel the next time main is pushed.
+      # ----------------------------------------------------------------------
+      - name: Sync runtime env vars to Vercel production
+        env:
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          SUPER_ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+          SUPER_ADMIN_NAME: ${{ secrets.SUPER_ADMIN_NAME }}
+          SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
+          SUPER_ADMIN_DIVISI: ${{ secrets.SUPER_ADMIN_DIVISI }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -e
+          sync() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "  - $name: skipped (no GitHub secret set)"
+              return
+            fi
+            # Remove the existing value, then re-add. `vercel env rm` exits
+            # non-zero when the key doesn't exist yet — that's fine, swallow it.
+            vercel env rm "$name" production --yes --token="$VERCEL_TOKEN" >/dev/null 2>&1 || true
+            printf '%s' "$value" | vercel env add "$name" production --token="$VERCEL_TOKEN" >/dev/null
+            echo "  + $name"
+          }
+          echo "Syncing GitHub repo secrets → Vercel production env:"
+          sync SESSION_SECRET     "$SESSION_SECRET"
+          sync SUPER_ADMIN_EMAIL  "$SUPER_ADMIN_EMAIL"
+          sync SUPER_ADMIN_NAME   "$SUPER_ADMIN_NAME"
+          sync SUPER_ADMIN_PASSWORD "$SUPER_ADMIN_PASSWORD"
+          sync SUPER_ADMIN_DIVISI "$SUPER_ADMIN_DIVISI"
+          sync DATABASE_URL       "$DATABASE_URL"
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build (Vercel)
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy (prebuilt) to production
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
