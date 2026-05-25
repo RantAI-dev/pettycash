@@ -96,15 +96,6 @@ export default function AdminFundPage() {
               }}
             />
           </Field>
-          <Field label="Threshold Pre-Approval" help="Pengeluaran di atas jumlah ini wajib pakai pre-approval">
-            <CurrencyInput
-              value={draft.preApprovalThreshold}
-              onChange={(v) => {
-                setDraft({ ...draft, preApprovalThreshold: v || 0 });
-                markDirty();
-              }}
-            />
-          </Field>
           <Field label="SLA Upload Bukti (jam)" help="Batas waktu requester mengupload bukti setelah disbursement">
             <Input
               type="number"

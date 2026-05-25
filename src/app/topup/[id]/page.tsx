@@ -10,6 +10,7 @@ import {
   CircleDashed,
   Download,
   SearchX,
+  X as XIcon,
 } from "lucide-react";
 import { can, sel, useStore } from "@/store/store";
 import {
@@ -32,6 +33,7 @@ export default function TopUpDetailPage() {
   const params = useParams<{ id: string }>();
   const cyc = state.cycles.find((c) => c.id === params.id);
   const [confirmApprove, setConfirmApprove] = useState(false);
+  const [confirmReject, setConfirmReject] = useState(false);
 
   if (!cyc) {
     return (
@@ -58,8 +60,21 @@ export default function TopUpDetailPage() {
   );
 
   const handleApproveTopUp = async () => {
-    await actions.approveTopUp(cyc.id);
-    toast.success("Top-up disetujui", `${fmtIDR(cyc.requestedAmount)} ditambahkan ke saldo`);
+    try {
+      await actions.approveTopUp(cyc.id);
+      toast.success("Top-up disetujui", `${fmtIDR(cyc.requestedAmount)} ditambahkan ke saldo`);
+    } catch (err) {
+      toast.error("Gagal approve top-up", err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleRejectTopUp = async () => {
+    try {
+      await actions.rejectTopUp(cyc.id);
+      toast.info("Top-up ditolak", `Request ${fmtIDR(cyc.requestedAmount)} ditolak. Saldo tidak berubah.`);
+    } catch (err) {
+      toast.error("Gagal tolak top-up", err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
@@ -86,9 +101,14 @@ export default function TopUpDetailPage() {
             Download PDF
           </Button>
           {cyc.status === "requested" && can.approveTopUp(currentUser) && (
-            <Button variant="success" icon={Check} onClick={() => setConfirmApprove(true)}>
-              Setujui Top-Up
-            </Button>
+            <>
+              <Button variant="danger" icon={XIcon} onClick={() => setConfirmReject(true)}>
+                Tolak Top-Up
+              </Button>
+              <Button variant="success" icon={Check} onClick={() => setConfirmApprove(true)}>
+                Setujui Top-Up
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -199,6 +219,16 @@ export default function TopUpDetailPage() {
         title="Setujui top-up cycle?"
         message={`Akan menambahkan ${fmtIDR(cyc.requestedAmount)} ke saldo kas. Saldo baru akan menjadi ${fmtIDR(state.fund.currentBalance + cyc.requestedAmount)}. Aksi ini akan tercatat di audit log.`}
         confirmLabel="Setujui Top-Up"
+      />
+
+      <ConfirmDialog
+        open={confirmReject}
+        onClose={() => setConfirmReject(false)}
+        onConfirm={handleRejectTopUp}
+        title="Tolak top-up cycle?"
+        message={`Request top-up sebesar ${fmtIDR(cyc.requestedAmount)} akan ditandai sebagai ditolak. Saldo kas TIDAK berubah. Custodian harus mengajukan top-up baru kalau memang masih perlu.`}
+        confirmLabel="Tolak Top-Up"
+        danger
       />
     </div>
   );

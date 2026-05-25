@@ -66,6 +66,7 @@ interface Actions {
     data: Omit<TopUpCycle, "id" | "approvedAmount" | "status" | "approvedBy" | "requestedAt" | "approvedAt" | "requestedBy" | "fundId">,
   ) => Promise<void>;
   approveTopUp: (cycleId: string) => Promise<void>;
+  rejectTopUp: (cycleId: string) => Promise<void>;
   setSidebarCollapsed: (v: boolean) => void;
   setNotifSettings: (patch: Partial<NotifSettings>) => Promise<void>;
   refresh: () => Promise<void>;
@@ -264,6 +265,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       approveTopUp: async (cycleId) => {
         await api(`/api/topup/${cycleId}/approve`, { method: "POST" });
+        await refresh();
+      },
+      rejectTopUp: async (cycleId) => {
+        await api(`/api/topup/${cycleId}/reject`, { method: "POST" });
         await refresh();
       },
 

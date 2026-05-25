@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { useStore } from "@/store/store";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -14,7 +14,6 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/primitives";
-import { fmtIDR } from "@/lib/format";
 
 interface FileItem {
   fileName: string;
@@ -48,9 +47,6 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
     }
   }, [open]);
 
-  const threshold = state.fund.preApprovalThreshold;
-  const overThreshold = useMemo(() => (amount || 0) > threshold, [amount, threshold]);
-
   const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     const errs: Record<string, string> = {};
@@ -58,9 +54,6 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
     if (!category) errs.category = "Pilih kategori";
     if (!description.trim()) errs.description = "Deskripsi wajib diisi";
     if (files.length === 0) errs.files = "Unggah minimal satu bukti";
-    if (overThreshold && !verbalApproval.trim()) {
-      errs.verbalApproval = "Untuk pengeluaran di atas threshold, catatan approval lisan/WA wajib diisi";
-    }
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
@@ -149,33 +142,8 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
         />
       </Field>
 
-      {overThreshold && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            background: "rgba(217, 165, 90, 0.08)",
-            border: "1px solid rgba(217, 165, 90, 0.32)",
-            borderRadius: 8,
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-          }}
-        >
-          <AlertTriangle size={16} style={{ color: "#e8b870", flex: "none", marginTop: 2 }} />
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>
-              Jumlah di atas threshold pre-approval ({fmtIDR(threshold)})
-            </div>
-            <div className="mono dim" style={{ fontSize: 11, lineHeight: 1.5 }}>
-              Untuk pengeluaran di atas threshold, pastikan sudah mendapat approval lisan / WA dari custodian. Catat referensinya di bawah.
-            </div>
-          </div>
-        </div>
-      )}
-
       <Field
-        label={overThreshold ? "Catatan Approval Lisan / WA (Wajib)" : "Catatan Approval Lisan / WA (Opsional)"}
+        label="Catatan Approval Lisan / WA (Opsional)"
         error={errors.verbalApproval}
         help='Contoh: "Approval WA dari Pak Risman pukul 14:30, 22 Mei"'
       >
