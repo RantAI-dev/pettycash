@@ -13,7 +13,16 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
   const txRows = await db.select().from(schema.transactions).where(eq(schema.transactions.id, id)).limit(1);
   const tx = txRows[0];
-  if (!tx) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!tx) return NextResponse.json({ error: "transaction not found" }, { status: 404 });
+
+  // Idempotency: only flip status + deduct balance on the first verify. A
+  // double-click or stale-tab retry must not re-deduct.
+  if (tx.status === "verified" || tx.status === "closed") {
+    return NextResponse.json({ ok: true, alreadyVerified: true });
+  }
+  if (tx.status === "rejected") {
+    return NextResponse.json({ error: "Tidak bisa verifikasi transaksi yang sudah ditolak" }, { status: 400 });
+  }
 
   const now = Date.now();
   await db
@@ -30,7 +39,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     createdAt: now,
   });
 
-  // Deduct from balance
   const fundRows = await db.select().from(schema.funds).limit(1);
   const fund = fundRows[0];
   if (fund) {
