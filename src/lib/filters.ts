@@ -5,6 +5,7 @@ export interface TxFilters {
   statuses?: string[];
   category?: string;
   project?: string;
+  pic?: string;
   requesterId?: string;
   period?: string; // preset key
   dateFrom?: string; // ISO yyyy-mm-dd
@@ -73,17 +74,19 @@ export function applyFilters(state: AppState, filters: TxFilters): Transaction[]
   const statuses = filters.statuses || [];
   const category = filters.category || "";
   const project = filters.project || "";
+  const pic = filters.pic || "";
   const requesterId = filters.requesterId || "";
 
   return state.transactions.filter((tx) => {
     if (search) {
       const u = state.users.find((u) => u.id === tx.requesterId);
-      const hay = `${tx.id} ${tx.description} ${tx.project ?? ""} ${u?.name ?? ""}`.toLowerCase();
+      const hay = `${tx.id} ${tx.description} ${tx.project ?? ""} ${tx.pic ?? ""} ${u?.name ?? ""}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
     if (statuses.length && !statuses.includes(tx.status)) return false;
     if (category && tx.category !== category) return false;
     if (project && tx.project !== project) return false;
+    if (pic && (tx.pic ?? "") !== pic) return false;
     if (requesterId && tx.requesterId !== requesterId) return false;
     if (range) {
       if (tx.createdAt < range.from) return false;
@@ -99,6 +102,7 @@ export function filtersFromSearchParams(sp: URLSearchParams): TxFilters {
     statuses: sp.get("statuses")?.split(",").filter(Boolean) || undefined,
     category: sp.get("category") || undefined,
     project: sp.get("project") || undefined,
+    pic: sp.get("pic") || undefined,
     requesterId: sp.get("requesterId") || undefined,
     period: sp.get("period") || undefined,
     dateFrom: sp.get("dateFrom") || undefined,
@@ -112,6 +116,7 @@ export function filtersToSearchParams(filters: TxFilters): string {
   if (filters.statuses?.length) sp.set("statuses", filters.statuses.join(","));
   if (filters.category) sp.set("category", filters.category);
   if (filters.project) sp.set("project", filters.project);
+  if (filters.pic) sp.set("pic", filters.pic);
   if (filters.requesterId) sp.set("requesterId", filters.requesterId);
   if (filters.period) sp.set("period", filters.period);
   if (filters.dateFrom) sp.set("dateFrom", filters.dateFrom);

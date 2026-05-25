@@ -29,9 +29,19 @@ interface CreateTransactionInput {
   amount: number;
   category: string;
   project?: string;
+  pic?: string | null;
   description: string;
   spentDate: string;
   attachments: Array<{ fileName: string; imgData: string | null; mimeType?: string; fileSize?: number }>;
+  verbalApproval?: string | null;
+}
+
+interface EditTransactionInput {
+  pic?: string | null;
+  project?: string;
+  category?: string;
+  description?: string;
+  spentDate?: string;
   verbalApproval?: string | null;
 }
 
@@ -39,6 +49,7 @@ interface Actions {
   switchUser: (userId: string) => Promise<void>;
   resetDemo: () => Promise<void>;
   createTransaction: (input: CreateTransactionInput) => Promise<string | null>;
+  editTransaction: (txId: string, patch: EditTransactionInput) => Promise<void>;
   verifyTransaction: (txId: string) => Promise<void>;
   rejectTransaction: (txId: string, reason: string) => Promise<void>;
   closeTransaction: (txId: string) => Promise<void>;
@@ -143,6 +154,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
         await refresh();
         return res.id;
+      },
+
+      editTransaction: async (txId, patch) => {
+        await api(`/api/transactions/${txId}`, { method: "PATCH", body: JSON.stringify(patch) });
+        await refresh();
       },
 
       verifyTransaction: async (txId) => {

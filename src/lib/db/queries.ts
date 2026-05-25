@@ -91,6 +91,7 @@ export async function getFullState(currentUserId: string): Promise<AppState> {
       amount: t.amount,
       category: t.category,
       project: t.project ?? "(Tanpa Proyek)",
+      pic: t.pic ?? null,
       description: t.description,
       status: t.status as Transaction["status"],
       spentDate: t.spentDate,

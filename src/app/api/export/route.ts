@@ -21,6 +21,7 @@ function makeFilename(
   mode: ReportMode,
   range: ReturnType<typeof resolveRange>,
   project?: string,
+  pic?: string,
 ): string {
   const stamp = new Date().toISOString().slice(0, 10);
   const modePart = mode === "petty" ? "petty-cash" : "transaksi";
@@ -28,7 +29,8 @@ function makeFilename(
     ? `${fmtDate(range.from, { short: true })}_${fmtDate(Math.min(range.to, Date.now()), { short: true })}`
     : "semua-periode";
   const projectPart = project ? `_${project}` : "";
-  return sanitizeFilename(`laporan-${modePart}${projectPart}_${periodPart}_${stamp}.${format}`);
+  const picPart = pic ? `_pic-${pic}` : "";
+  return sanitizeFilename(`laporan-${modePart}${projectPart}${picPart}_${periodPart}_${stamp}.${format}`);
 }
 
 export async function GET(req: Request) {
@@ -49,11 +51,15 @@ export async function GET(req: Request) {
   const range = resolveRange(filters);
   const transactions = applyFilters(state, filters);
 
-  const filename = makeFilename(format, mode, range, filters.project);
+  const filename = makeFilename(format, mode, range, filters.project, filters.pic);
   const generatedBy = state.users.find((u) => u.id === userId)?.name;
 
   if (format === "xlsx") {
-    const buffer = await buildExcel(state, transactions, range, { mode, project: filters.project });
+    const buffer = await buildExcel(state, transactions, range, {
+      mode,
+      project: filters.project,
+      pic: filters.pic,
+    });
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
@@ -68,6 +74,7 @@ export async function GET(req: Request) {
     generatedBy,
     mode,
     project: filters.project,
+    pic: filters.pic,
     includeBukti,
   });
   return new NextResponse(new Uint8Array(buffer), {

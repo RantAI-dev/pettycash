@@ -26,6 +26,7 @@ interface BuildOpts {
   generatedBy?: string;
   mode?: ReportMode;
   project?: string;
+  pic?: string;
   /** Whether to render an appendix with each transaction's bukti. */
   includeBukti?: boolean;
 }
@@ -200,6 +201,7 @@ export async function buildPdf(
   const chipParts: string[] = [];
   if (range?.label) chipParts.push(`Filter: ${range.label}`);
   if (opts.project) chipParts.push(`Proyek: ${opts.project}`);
+  if (opts.pic) chipParts.push(`PIC: ${opts.pic}`);
   if (chipParts.length) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -341,6 +343,7 @@ export async function buildPdf(
       fmtDate(tx.createdAt, { short: true }),
       u?.name ?? "—",
       tx.project ?? "(Tanpa Proyek)",
+      tx.pic ?? "—",
       tx.description,
       fmtIDR(tx.amount),
       STATUS_LABEL[tx.status] ?? tx.status,
@@ -349,7 +352,7 @@ export async function buildPdf(
 
   autoTable(doc, {
     startY: y,
-    head: [["#", "ID", "Tgl", "Pemohon", "Proyek", "Deskripsi", "Jumlah", "Status"]],
+    head: [["#", "ID", "Tgl", "Pemohon", "Proyek", "PIC", "Deskripsi", "Jumlah", "Status"]],
     body: rows,
     theme: "plain",
     headStyles: {
@@ -369,14 +372,15 @@ export async function buildPdf(
     },
     alternateRowStyles: { fillColor: BG_TINT },
     columnStyles: {
-      0: { cellWidth: 24, halign: "right", textColor: MUTED },
-      1: { cellWidth: 64, font: "courier" },
-      2: { cellWidth: 50 },
-      3: { cellWidth: 80 },
-      4: { cellWidth: 78 },
-      5: { cellWidth: "auto" },
-      6: { cellWidth: 60, halign: "right", font: "courier" },
-      7: { cellWidth: 60 },
+      0: { cellWidth: 20, halign: "right", textColor: MUTED },
+      1: { cellWidth: 58, font: "courier" },
+      2: { cellWidth: 46 },
+      3: { cellWidth: 70 },
+      4: { cellWidth: 64 },
+      5: { cellWidth: 60 },
+      6: { cellWidth: "auto" },
+      7: { cellWidth: 56, halign: "right", font: "courier" },
+      8: { cellWidth: 60 },
     },
     margin: { left: margin, right: margin, top: 30, bottom: 36 },
     didDrawPage: (data) => {
@@ -571,8 +575,9 @@ async function drawBuktiPage(
     fmtDate(tx.createdAt),
     u?.name ?? "—",
     tx.project ?? "(Tanpa Proyek)",
+    tx.pic ? `PIC: ${tx.pic}` : null,
     tx.category,
-  ];
+  ].filter((p): p is string => !!p);
   doc.text(metaParts.join("  ·  "), headerLeft, headerTop + 84);
 
   // Amount on the right

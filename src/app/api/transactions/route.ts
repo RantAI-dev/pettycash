@@ -9,6 +9,7 @@ interface CreateBody {
   amount: number;
   category: string;
   project?: string;
+  pic?: string | null;
   description: string;
   spentDate: string;
   attachments?: Array<{ fileName: string; imgData: string | null; mimeType?: string; fileSize?: number }>;
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     amount: body.amount,
     category: body.category,
     project: body.project?.trim() || "(Tanpa Proyek)",
+    pic: body.pic?.trim() || null,
     description: body.description.trim(),
     status: "reported",
     spentDate: body.spentDate || new Date().toISOString(),

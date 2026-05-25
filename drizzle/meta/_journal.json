@@ -8,6 +8,13 @@
       "when": 1779548964086,
       "tag": "0000_lowly_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779724535424,
+      "tag": "0001_mushy_luckman",
+      "breakpoints": true
     }
   ]
 }

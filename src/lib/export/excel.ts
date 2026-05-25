@@ -11,7 +11,7 @@ export async function buildExcel(
   state: AppState,
   transactions: Transaction[],
   range: ResolvedRange | null,
-  opts: { mode?: ReportMode; project?: string } = {},
+  opts: { mode?: ReportMode; project?: string; pic?: string } = {},
 ): Promise<Buffer> {
   const mode: ReportMode = opts.mode ?? "petty";
   const wb = new ExcelJS.Workbook();
@@ -31,6 +31,7 @@ export async function buildExcel(
     { header: "Pemohon", key: "requester", width: 26 },
     { header: "Divisi", key: "divisi", width: 14 },
     { header: "Proyek", key: "project", width: 26 },
+    { header: "PIC", key: "pic", width: 22 },
     { header: "Kategori", key: "category", width: 18 },
     { header: "Deskripsi", key: "description", width: 50 },
     { header: "Jumlah (Rp)", key: "amount", width: 16 },
@@ -56,6 +57,7 @@ export async function buildExcel(
       requester: u?.name ?? "",
       divisi: u?.divisi ?? "",
       project: tx.project ?? "(Tanpa Proyek)",
+      pic: tx.pic ?? "",
       category: tx.category,
       description: tx.description,
       amount: tx.amount,
@@ -81,6 +83,8 @@ export async function buildExcel(
       verifiedAt: "",
       requester: "",
       divisi: "",
+      project: "",
+      pic: "",
       category: "",
       description: `TOTAL · ${transactions.length} transaksi`,
       amount: transactions.reduce((s, t) => s + t.amount, 0),
@@ -117,6 +121,7 @@ export async function buildExcel(
   sum.addRow({ k: "Mode Laporan", v: mode === "petty" ? "Laporan Penggunaan Petty Cash" : "Laporan Transaksi" });
   sum.addRow({ k: "Periode", v: range ? `${fmtDate(range.from)} – ${fmtDate(range.to)}` : "Semua Periode" });
   if (opts.project) sum.addRow({ k: "Proyek", v: opts.project });
+  if (opts.pic) sum.addRow({ k: "PIC", v: opts.pic });
   sum.addRow({ k: "Jumlah Transaksi", v: transactions.length });
   sum.addRow({ k: "Total Nominal", v: totalAmount });
   sum.addRow({ k: "Total Terverifikasi", v: verifiedAmount });
@@ -171,6 +176,22 @@ export async function buildExcel(
   sum.addRow({ k: "BREAKDOWN PROYEK", v: "" }).font = { bold: true };
   const projEntries = Array.from(byProj.entries()).sort((a, b) => b[1].total - a[1].total);
   for (const [p, { count, total }] of projEntries) {
+    sum.addRow({ k: `  ${p} (${count})`, v: total });
+  }
+  sum.addRow({});
+
+  // PIC breakdown
+  const byPic = new Map<string, { count: number; total: number }>();
+  for (const t of transactions) {
+    const p = t.pic ?? "(Tanpa PIC)";
+    const cur = byPic.get(p) ?? { count: 0, total: 0 };
+    cur.count++;
+    cur.total += t.amount;
+    byPic.set(p, cur);
+  }
+  sum.addRow({ k: "BREAKDOWN PIC", v: "" }).font = { bold: true };
+  const picEntries = Array.from(byPic.entries()).sort((a, b) => b[1].total - a[1].total);
+  for (const [p, { count, total }] of picEntries) {
     sum.addRow({ k: `  ${p} (${count})`, v: total });
   }
 

@@ -53,6 +53,7 @@ export function ExportReportModal({
   const [statuses, setStatuses] = useState<string[]>([]);
   const [category, setCategory] = useState("");
   const [project, setProject] = useState("");
+  const [pic, setPic] = useState("");
   const [requester, setRequester] = useState("");
   const [period, setPeriod] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -68,11 +69,18 @@ export function ExportReportModal({
     setStatuses(initialFilters?.statuses ?? []);
     setCategory(initialFilters?.category ?? "");
     setProject(initialFilters?.project ?? "");
+    setPic(initialFilters?.pic ?? "");
     setRequester(initialFilters?.requesterId ?? "");
     setPeriod(initialFilters?.period ?? "");
     setDateFrom(initialFilters?.dateFrom ?? "");
     setDateTo(initialFilters?.dateTo ?? "");
   }, [open, initialFilters, initialMode, initialFormat]);
+
+  const allPics = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of state.transactions) if (t.pic) set.add(t.pic);
+    return Array.from(set).sort();
+  }, [state.transactions]);
 
   const filters: TxFilters = useMemo(
     () => ({
@@ -80,12 +88,13 @@ export function ExportReportModal({
       statuses: statuses.length ? statuses : undefined,
       category: category || undefined,
       project: project || undefined,
+      pic: pic || undefined,
       requesterId: requester || undefined,
       period: period || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
     }),
-    [search, statuses, category, project, requester, period, dateFrom, dateTo],
+    [search, statuses, category, project, pic, requester, period, dateFrom, dateTo],
   );
 
   const range = useMemo(() => resolveRange(filters), [filters]);
@@ -102,6 +111,7 @@ export function ExportReportModal({
     setStatuses([]);
     setCategory("");
     setProject("");
+    setPic("");
     setRequester("");
     setPeriod("");
     setDateFrom("");
@@ -128,7 +138,7 @@ export function ExportReportModal({
     onClose();
   };
 
-  const hasFilter = !!(search || statuses.length || category || project || requester || period || dateFrom || dateTo);
+  const hasFilter = !!(search || statuses.length || category || project || pic || requester || period || dateFrom || dateTo);
 
   return (
     <Modal
@@ -241,6 +251,17 @@ export function ExportReportModal({
           <select className="select" value={project} onChange={(e) => setProject(e.target.value)}>
             <option value="">Semua Proyek</option>
             {(state.projects ?? []).map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </FieldBlock>
+
+        <FieldBlock label="PIC / Penanggung Jawab">
+          <select className="select" value={pic} onChange={(e) => setPic(e.target.value)}>
+            <option value="">Semua PIC</option>
+            {allPics.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

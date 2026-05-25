@@ -10,12 +10,14 @@ import {
   MessageCircle,
   MessageSquarePlus,
   Paperclip,
+  PencilLine,
   Plus,
   SearchX,
   ShieldCheck,
   Upload,
   X,
 } from "lucide-react";
+import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { can, sel, useStore } from "@/store/store";
 import {
   AttachmentCard,
@@ -57,6 +59,7 @@ export default function TransactionDetailPage() {
   const [noteText, setNoteText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (!tx) {
     return (
@@ -83,6 +86,9 @@ export default function TransactionDetailPage() {
   const showUploadBukti =
     (tx.status === "reported" || tx.status === "rejected") && (isMine || can.verify(currentUser));
   const showClose = tx.status === "verified" && can.closeTx(currentUser);
+  // Edit is allowed while the transaction is not closed; the route handler
+  // also enforces this. Closed transactions are frozen.
+  const showEdit = tx.status !== "closed" && (isMine || can.verify(currentUser));
 
   const doVerify = () => {
     actions.verifyTransaction(tx.id);
@@ -189,6 +195,11 @@ export default function TransactionDetailPage() {
               Tutup Transaksi
             </Button>
           )}
+          {showEdit && (
+            <Button variant="outline" icon={PencilLine} onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          )}
         </div>
       </div>
 
@@ -218,6 +229,10 @@ export default function TransactionDetailPage() {
                   <span className="k">Proyek</span>
                   <span className="v">
                     <Badge custom="cat">{tx.project ?? "(Tanpa Proyek)"}</Badge>
+                  </span>
+                  <span className="k">PIC</span>
+                  <span className="v">
+                    {tx.pic ? <Badge custom="cat">{tx.pic}</Badge> : <span className="dim">—</span>}
                   </span>
                   {tx.spentDate && (
                     <>
@@ -417,6 +432,8 @@ export default function TransactionDetailPage() {
       </Modal>
 
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+
+      <EditTransactionDialog tx={editOpen ? tx : null} onClose={() => setEditOpen(false)} />
     </div>
   );
 }

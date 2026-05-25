@@ -59,6 +59,7 @@ export interface Transaction {
   amount: number;
   category: string;
   project: string;
+  pic: string | null;
   description: string;
   status: Status;
   spentDate: string;

@@ -58,6 +58,7 @@ function TransactionsPage() {
   const [statuses, setStatuses] = useState<string[]>(initialStatus);
   const [category, setCategory] = useState("");
   const [project, setProject] = useState("");
+  const [pic, setPic] = useState("");
   const [requester, setRequester] = useState("");
   const [period, setPeriod] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -72,13 +73,22 @@ function TransactionsPage() {
       statuses: statuses.length ? statuses : undefined,
       category: category || undefined,
       project: project || undefined,
+      pic: pic || undefined,
       requesterId: requester || undefined,
       period: period || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
     }),
-    [search, statuses, category, project, requester, period, dateFrom, dateTo],
+    [search, statuses, category, project, pic, requester, period, dateFrom, dateTo],
   );
+
+  // Distinct PICs that exist on transactions, so the filter dropdown only
+  // shows values that will actually match something.
+  const allPics = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of state.transactions) if (t.pic) set.add(t.pic);
+    return Array.from(set).sort();
+  }, [state.transactions]);
 
   const effectiveRange = useMemo(() => resolveRange(filters), [filters]);
 
@@ -93,6 +103,7 @@ function TransactionsPage() {
     setStatuses([]);
     setCategory("");
     setProject("");
+    setPic("");
     setRequester("");
     setPeriod("");
     setDateFrom("");
@@ -105,7 +116,7 @@ function TransactionsPage() {
     setPage(1);
   };
 
-  const hasFilter = !!(search || statuses.length || category || project || requester || period || dateFrom || dateTo);
+  const hasFilter = !!(search || statuses.length || category || project || pic || requester || period || dateFrom || dateTo);
   const rangeLabel = effectiveRange
     ? `${fmtDate(effectiveRange.from, { short: true })} – ${fmtDate(Math.min(effectiveRange.to, Date.now()), { short: true })}`
     : null;
@@ -187,6 +198,22 @@ function TransactionsPage() {
         >
           <option value="">Semua Proyek</option>
           {(state.projects ?? []).map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          style={{ width: "auto", flex: "0 0 auto" }}
+          value={pic}
+          onChange={(e) => {
+            setPic(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Semua PIC</option>
+          {allPics.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -380,6 +407,29 @@ function TransactionsPage() {
               </button>
             </span>
           )}
+          {pic && (
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                padding: "4px 10px",
+                background: "rgba(94,182,250,0.08)",
+                border: "1px solid rgba(94,182,250,0.2)",
+                borderRadius: 99,
+                color: "#cfe6fc",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              PIC: {pic}
+              <button onClick={() => setPic("")} style={{ display: "inline-flex", marginLeft: 2 }}>
+                <X size={10} />
+              </button>
+            </span>
+          )}
           {requester && (
             <span
               className="mono"
@@ -429,6 +479,7 @@ function TransactionsPage() {
                     <th style={{ width: 110 }}>Tanggal</th>
                     <th>Pemohon</th>
                     <th>Proyek</th>
+                    <th>PIC</th>
                     <th>Deskripsi</th>
                     <th>Kategori</th>
                     <th className="num" style={{ width: 130 }}>
@@ -463,6 +514,13 @@ function TransactionsPage() {
                         </td>
                         <td>
                           <Badge custom="cat">{tx.project ?? "(Tanpa Proyek)"}</Badge>
+                        </td>
+                        <td>
+                          {tx.pic ? (
+                            <span className="mono" style={{ fontSize: 12 }}>{tx.pic}</span>
+                          ) : (
+                            <span className="dim">—</span>
+                          )}
                         </td>
                         <td className="ellip">{tx.description}</td>
                         <td>

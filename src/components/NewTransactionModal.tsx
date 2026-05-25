@@ -28,6 +28,7 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
   const [amount, setAmount] = useState<number | null>(null);
   const [category, setCategory] = useState("");
   const [project, setProject] = useState("");
+  const [pic, setPic] = useState("");
   const [description, setDescription] = useState("");
   const [spentDate, setSpentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -39,6 +40,7 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
       setAmount(null);
       setCategory("");
       setProject("");
+      setPic("");
       setDescription("");
       setSpentDate(new Date().toISOString().slice(0, 10));
       setFiles([]);
@@ -65,6 +67,7 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
         amount: amount!,
         category,
         project: project || "(Tanpa Proyek)",
+        pic: pic.trim() || null,
         description: description.trim(),
         spentDate: new Date(spentDate).toISOString(),
         attachments: files,
@@ -123,14 +126,23 @@ export function NewTransactionModal({ open, onClose }: { open: boolean; onClose:
         </div>
       </div>
 
-      <Field label="Proyek" help="Hubungkan transaksi dengan proyek atau klien. Pilih (Tanpa Proyek) jika tidak ada.">
-        <Select
-          value={project}
-          onChange={setProject}
-          placeholder="Pilih proyek…"
-          options={state.projects.length ? state.projects : ["(Tanpa Proyek)"]}
-        />
-      </Field>
+      <div className="row gap-16" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <Field label="Proyek" help="Hubungkan transaksi ke proyek / klien.">
+            <Select
+              value={project}
+              onChange={setProject}
+              placeholder="Pilih proyek…"
+              options={state.projects.length ? state.projects : ["(Tanpa Proyek)"]}
+            />
+          </Field>
+        </div>
+        <div style={{ flex: "1 1 240px", minWidth: 220 }}>
+          <Field label="PIC / Penanggung Jawab" help="Nama orang yang bertanggung jawab atas pengeluaran ini. Bisa diedit nanti.">
+            <Input value={pic} onChange={setPic} placeholder="Contoh: Pak Risman" />
+          </Field>
+        </div>
+      </div>
 
       <Field label="Deskripsi" error={errors.description} help="Jelaskan singkat untuk apa pengeluaran ini.">
         <Textarea

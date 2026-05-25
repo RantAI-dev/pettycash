@@ -39,6 +39,7 @@ export const transactions = pgTable("transactions", {
   amount: bigint("amount", { mode: "number" }).notNull(),
   category: text("category").notNull(),
   project: text("project").notNull().default("(Tanpa Proyek)"),
+  pic: text("pic"),
   description: text("description").notNull(),
   status: text("status").notNull(),
   spentDate: text("spent_date").notNull(),
