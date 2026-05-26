@@ -44,16 +44,56 @@ export default function AdminFundPage() {
     );
   }
 
+  const [saving, setSaving] = useState(false);
   const save = async () => {
+    setSaving(true);
+    // Hit all four endpoints in parallel and only refresh once at the end.
+    // Doing it via the store actions used to trigger a refresh after every
+    // single PATCH/PUT, which made the useEffect reset the drafts mid-save
+    // and the save bar disappear before the user knew if anything happened.
+    const requests: Array<Promise<Response>> = [
+      fetch("/api/fund", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draft),
+      }),
+      fetch("/api/categories", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ categories: draftCats }),
+      }),
+      fetch("/api/projects", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projects: draftProjects }),
+      }),
+      fetch("/api/notif-settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draftNotifs),
+      }),
+    ];
     try {
-      await actions.updateFund(draft);
-      await actions.setCategories(draftCats);
-      await actions.setProjects(draftProjects);
-      await actions.setNotifSettings(draftNotifs);
-      toast.success("Pengaturan disimpan", "Perubahan berlaku sekarang");
+      const responses = await Promise.all(requests);
+      const failed: string[] = [];
+      const names = ["Fund", "Kategori", "Proyek", "Notifikasi"];
+      for (let i = 0; i < responses.length; i++) {
+        if (!responses[i].ok) {
+          const body = await responses[i].text().catch(() => "");
+          failed.push(`${names[i]} (${responses[i].status}): ${body || "tanpa detail"}`);
+        }
+      }
+      if (failed.length) {
+        toast.error("Sebagian gagal disimpan", failed.join(" · "));
+      } else {
+        toast.success("Pengaturan disimpan", "Perubahan berlaku sekarang");
+      }
+      await actions.refresh();
       setDirty(false);
     } catch (err) {
       toast.error("Gagal menyimpan", err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -326,8 +366,8 @@ export default function AdminFundPage() {
           >
             Buang Perubahan
           </Button>
-          <Button variant="primary" icon={Save} onClick={save}>
-            Simpan Perubahan
+          <Button variant="primary" icon={Save} onClick={save} disabled={saving}>
+            {saving ? "Menyimpan…" : "Simpan Perubahan"}
           </Button>
         </div>
       )}
