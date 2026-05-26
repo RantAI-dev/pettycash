@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
@@ -14,6 +15,7 @@ import {
   Plus,
   SearchX,
   ShieldCheck,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -60,6 +62,8 @@ export default function TransactionDetailPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const router = useRouter();
 
   if (!tx) {
     return (
@@ -82,13 +86,15 @@ export default function TransactionDetailPage() {
   const custodian = sel.userById(state, tx.custodianId);
   const isMine = tx.requesterId === currentUser.id;
 
+  const isSuperAdmin = currentUser.role === "super_admin";
   const showVerifyReject = tx.status === "reported" && can.verify(currentUser);
   const showUploadBukti =
     (tx.status === "reported" || tx.status === "rejected") && (isMine || can.verify(currentUser));
   const showClose = tx.status === "verified" && can.closeTx(currentUser);
-  // Edit is allowed while the transaction is not closed; the route handler
-  // also enforces this. Closed transactions are frozen.
-  const showEdit = tx.status !== "closed" && (isMine || can.verify(currentUser));
+  // Edit + delete are super_admin only. Edit is also blocked when status is
+  // closed (server enforces this too). Delete works on any status.
+  const showEdit = isSuperAdmin && tx.status !== "closed";
+  const showDelete = isSuperAdmin;
 
   const doVerify = () => {
     actions.verifyTransaction(tx.id);
@@ -108,6 +114,19 @@ export default function TransactionDetailPage() {
     actions.closeTransaction(tx.id);
     toast.success("Selesai", `${tx.id} ditutup`);
   };
+  const doDelete = async () => {
+    try {
+      const res = await actions.deleteTransaction(tx.id);
+      const msg = res.restoredBalance > 0
+        ? `${tx.id} dihapus. Saldo dikembalikan ${fmtIDR(res.restoredBalance)}.`
+        : `${tx.id} dihapus.`;
+      toast.success("Transaksi dihapus", msg);
+      router.push("/transactions");
+    } catch (err) {
+      toast.error("Gagal menghapus", err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const doAddNote = () => {
     if (!noteText.trim()) return;
     actions.addNote(tx.id, noteText.trim());
@@ -198,6 +217,11 @@ export default function TransactionDetailPage() {
           {showEdit && (
             <Button variant="outline" icon={PencilLine} onClick={() => setEditOpen(true)}>
               Edit
+            </Button>
+          )}
+          {showDelete && (
+            <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
+              Hapus
             </Button>
           )}
         </div>
@@ -434,6 +458,21 @@ export default function TransactionDetailPage() {
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       <EditTransactionDialog tx={editOpen ? tx : null} onClose={() => setEditOpen(false)} />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={doDelete}
+        title={`Hapus transaksi ${tx.id}?`}
+        message={
+          (tx.status === "verified" || tx.status === "closed"
+            ? `Saldo kas akan dikembalikan sebesar ${fmtIDR(tx.amount)}. `
+            : "") +
+          "Semua bukti, event, dan catatan untuk transaksi ini akan terhapus permanen. Aksi ini TIDAK BISA dibatalkan. Gunakan hanya untuk membersihkan data salah input — untuk koreksi yang benar, gunakan Tolak + submit ulang."
+        }
+        confirmLabel="Hapus Permanen"
+        danger
+      />
     </div>
   );
 }

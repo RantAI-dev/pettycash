@@ -50,6 +50,7 @@ interface Actions {
   resetDemo: () => Promise<void>;
   createTransaction: (input: CreateTransactionInput) => Promise<string | null>;
   editTransaction: (txId: string, patch: EditTransactionInput) => Promise<void>;
+  deleteTransaction: (txId: string) => Promise<{ restoredBalance: number }>;
   verifyTransaction: (txId: string) => Promise<void>;
   rejectTransaction: (txId: string, reason: string) => Promise<void>;
   closeTransaction: (txId: string) => Promise<void>;
@@ -159,6 +160,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       editTransaction: async (txId, patch) => {
         await api(`/api/transactions/${txId}`, { method: "PATCH", body: JSON.stringify(patch) });
         await refresh();
+      },
+
+      deleteTransaction: async (txId) => {
+        const res = await api<{ restoredBalance: number }>(`/api/transactions/${txId}`, { method: "DELETE" });
+        await refresh();
+        return res;
       },
 
       verifyTransaction: async (txId) => {
