@@ -257,7 +257,17 @@ function GenerateTopUpDialog({
           <Button
             variant="outline"
             icon={Download}
-            onClick={() => toast.info("Preview PDF", "PDF preview akan terbuka di tab baru")}
+            onClick={() => {
+              const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+              const qs = new URLSearchParams({
+                format: "pdf",
+                mode: "petty",
+                period: "custom",
+                dateFrom: isoDay(period.start),
+                dateTo: isoDay(period.end),
+              });
+              window.open(`/api/export?${qs.toString()}`, "_blank");
+            }}
           >
             Download PDF Preview
           </Button>

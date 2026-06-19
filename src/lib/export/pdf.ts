@@ -7,7 +7,7 @@ import path from "node:path";
 import { fmtDate, fmtDateTime, fmtIDR, STATUS_LABEL } from "@/lib/format";
 import type { AppState, Attachment, Transaction } from "@/lib/types";
 import type { ResolvedRange } from "@/lib/filters";
-import { balanceAt, reportBounds } from "@/lib/saldo";
+import { reportBounds, saldoForPeriod } from "@/lib/saldo";
 
 // Brand palette
 const BRAND_NAVY: [number, number, number] = [5, 10, 48];
@@ -138,8 +138,7 @@ export async function buildPdf(
 
   // ====== Compute saldo ======
   const bounds = reportBounds(transactions, range);
-  const saldoBefore = bounds ? balanceAt(state, bounds.from - 1) : state.fund.currentBalance;
-  const saldoAfter = bounds ? balanceAt(state, bounds.to) : state.fund.currentBalance;
+  const { awal: saldoBefore, akhir: saldoAfter } = saldoForPeriod(state, bounds);
   const totalExpense = transactions.reduce((s, t) => s + t.amount, 0);
   const verifiedExpense = transactions
     .filter((t) => t.verifiedAt && t.status !== "rejected")

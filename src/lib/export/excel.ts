@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { fmtDate, STATUS_LABEL } from "@/lib/format";
 import type { AppState, Transaction } from "@/lib/types";
 import type { ResolvedRange } from "@/lib/filters";
-import { balanceAt, reportBounds } from "@/lib/saldo";
+import { reportBounds, saldoForPeriod } from "@/lib/saldo";
 
 export type ReportMode = "petty" | "transactions";
 
@@ -115,8 +115,7 @@ export async function buildExcel(
     .filter((t) => t.verifiedAt && t.status !== "rejected")
     .reduce((s, t) => s + t.amount, 0);
   const bounds = reportBounds(transactions, range);
-  const saldoBefore = bounds ? balanceAt(state, bounds.from - 1) : state.fund.currentBalance;
-  const saldoAfter = bounds ? balanceAt(state, bounds.to) : state.fund.currentBalance;
+  const { awal: saldoBefore, akhir: saldoAfter } = saldoForPeriod(state, bounds);
 
   sum.addRow({ k: "Mode Laporan", v: mode === "petty" ? "Laporan Penggunaan Petty Cash" : "Laporan Transaksi" });
   sum.addRow({ k: "Periode", v: range ? `${fmtDate(range.from)} – ${fmtDate(range.to)}` : "Semua Periode" });

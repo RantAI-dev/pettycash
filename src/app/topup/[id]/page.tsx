@@ -96,7 +96,18 @@ export default function TopUpDetailPage() {
           <Button
             variant="outline"
             icon={Download}
-            onClick={() => toast.info("Download PDF", "PDF cycle akan terbuka")}
+            onClick={() => {
+              const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+              const qs = new URLSearchParams({
+                format: "pdf",
+                mode: "petty",
+                period: "custom",
+                dateFrom: isoDay(cyc.periodStart),
+                dateTo: isoDay(cyc.periodEnd),
+              });
+              window.location.href = `/api/export?${qs.toString()}`;
+              toast.success("Download dimulai", `PDF cycle ${fmtDate(cyc.periodStart, { short: true })} – ${fmtDate(cyc.periodEnd, { short: true })}.`);
+            }}
           >
             Download PDF
           </Button>
